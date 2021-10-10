@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="84ae49f7-dbef-42b0-92ae-7c0aa43eaa00" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="a438d067-cd03-42a6-81d3-c14d2900c20b" fetchAllApexSoapMetadata="true" sendNullValues="true">
+		<salesforce:basic-connection username="yogeshwari92rathod@gmail.com" securityToken="VcertCBK4QYEcohBCfBLwsaZH" url="https://login.salesforce.com/services/Soap/u/49.0" password="SANAYA06"/>
+	</salesforce:sfdc-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="af551537-dbfd-4586-86bc-02a4bb4f198c" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="root" database="muletraining" />
+	</db:config>
+	<flow name="Provide-multiplPayload-before-foreach" doc:id="aaa3d3c7-111a-46c2-a596-bdf48044eec1" >
+		<http:listener doc:name="Listener/multiple-set-payload" doc:id="b985146a-af31-43be-8e6e-c12222b35ec7" config-ref="HTTP_Listener_config" path="/multiple-set-payload"/>
+		<set-payload value="#[[1,2,3,4,5]]" doc:name="[1,2,3,4,5]" doc:id="5c2712bb-a683-4ebd-8aff-39e1a354844f" />
+		<set-variable value="#[payload]" doc:name="myCollection" doc:id="b2bc4c0c-dc12-4904-9536-1993f01bf74d" variableName="myCollection"/>
+		<set-payload value='#["yogeshwari"]' doc:name='"yogeshwari"' doc:id="86a272a4-2592-4e2c-a230-94d97364f2f1" />
+		<foreach doc:name="For Each" doc:id="a73bb481-0a34-40c0-a540-74709c620723" collection="#[vars.myCollection]">
+			<set-payload value="#[10 * payload]" doc:name="10 * payload" doc:id="5fac35b4-bb0c-4ad2-bd90-eecf5e493514" />
+			<logger level="INFO" doc:name="Logger" doc:id="725cd093-a920-4436-8da5-57b45bcabf72" message="#[payload]" />
+			<set-variable value="#[payload]" doc:name="myPayload" doc:id="57131f56-5d2c-4a2d-afc6-206b6d111ea7" variableName="myPayload" />
+		</foreach>
+		<ee:transform doc:name="Transform Message" doc:id="95d7f5d0-633b-4522-af7b-6769cdcbf586" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"payloadValue": payload,
+	"varValue": vars.myPayload
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="process-string-number-handle-error" doc:id="617fc228-afa3-46b8-9221-1fb0b4a938a1" >
+		<http:listener doc:name="Listener/failedrecordtrace" doc:id="7e5f1524-aa76-497a-a2af-e5559712100b" config-ref="HTTP_Listener_config" path="/failedrecordtrace"/>
+		<set-payload value='#[[1,2,"apple",3,4,5,"banana"]]' doc:name='[1,2,"apple",3,4,5,"banana"]' doc:id="5923ee12-c157-4eaa-9d3c-a735e9798190" />
+		<set-variable value="#[payload]" doc:name="myCollection" doc:id="bcd6ca3a-55c1-4413-8c55-d85634e00f00" variableName="myCollection"/>
+		<foreach doc:name="For Each" doc:id="cd02e639-be55-4c76-af5d-0bf3c915b270" collection="#[vars.myCollection]">
+			<try doc:name="Try" doc:id="9726b6e0-ae99-4bc7-8116-0d7cbbafcf1a" >
+				<set-payload value="#[10* payload]" doc:name="10* payload" doc:id="2a62c46e-93f1-41d9-adcc-2ad09bcb3bd1" />
+				<logger level="INFO" doc:name="Logger" doc:id="fd6aea71-6ca4-476d-968e-b645eac11265" message="#[payload]" />
+				<set-variable value="#[payload]" doc:name="myPayload" doc:id="652439e7-88cf-4ad5-b2ba-2c1747213c2f" variableName="myPayload" />
+				<error-handler >
+					<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="6fc50f99-aace-41a0-976c-82be4091a7e6" >
+						<set-variable value="#[(vars.failedRecord default [])+ payload]" doc:name="failedRecord" doc:id="d57a460d-2ba8-4e05-9d19-ec6bb0277844" variableName="failedRecord"/>
+					</on-error-continue>
+				</error-handler>
+			</try>
+		</foreach>
+		<ee:transform doc:name="Transform Message" doc:id="fe7dc677-d446-4da6-a918-edd1af9b5528" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"payloadVal":payload,
+	"varValue": vars.myPayload,
+	"failedRecords": vars.failedRecord
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="foreach-singlevariable" doc:id="ecef2233-3074-4212-acb3-5e8bf38b0921" >
+		<http:listener doc:name="Listener/usingSingleVar" doc:id="f1ec27e3-9b53-462c-8f06-082a0afa5e23" config-ref="HTTP_Listener_config" path="/usingSingleVar"/>
+		<set-payload value="#[[1,2,3,4,5]]" doc:name="[1,2,3,4,5]" doc:id="b789a6e7-7043-4455-ad1a-cf8e4b556843" />
+		<foreach doc:name="For Each" doc:id="854d4d9d-322a-4c2d-9238-744eb54e595e" >
+			<set-payload value="#[10 * payload]" doc:name="10 * payload" doc:id="32442772-e46e-497a-9f26-bd0a7be162bd" />
+			<set-variable value="#[payload]" doc:name="myPayload" doc:id="9c120378-1d39-4d26-b865-5fec5ce76265" variableName="myPayload"/>
+		</foreach>
+		<ee:transform doc:name="Transform Message" doc:id="f93669c2-9879-4796-8237-dc5a36375025" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"payloadValue": payload,
+	"varValue": vars.myPayload
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="foreach-Flow" doc:id="d9d0a26a-d448-4b75-b8cc-0220577e01a9" >
+		<http:listener doc:name="Listener/foreach" doc:id="c46af48a-dd19-48b8-b246-619956ea6b52" config-ref="HTTP_Listener_config" path="/foreach"/>
+		<set-payload value="#[[1,2,3,4,5]]" doc:name="[1,2,3,4,5]" doc:id="bc1cd787-5d65-497e-abe5-7956f440706d" />
+		<set-variable value="#[[]]" doc:name="myPayload" doc:id="da53dc2c-03ef-4d6b-973b-1ace03882756" variableName="myPayload"/>
+		<foreach doc:name="For Each" doc:id="6612de2a-c3f2-4793-a353-599f58f8123d" >
+			<set-payload value="#[10 * payload]" doc:name="[10 * payload]" doc:id="aaab2a75-92bc-4e9c-8f93-52d368338893" />
+			<logger level="INFO" doc:name="Logger" doc:id="3cb8a438-2c75-4cb7-93d8-bb0e546d1fc3" message="#[payload]"/>
+			<set-variable value="#[vars.myPayload + payload]" doc:name="myPayload" doc:id="f031dec8-47ce-4483-a819-0a87b8755673" variableName="myPayload"/>
+		</foreach>
+		<ee:transform doc:name="Transform Message" doc:id="392cbee7-a7e9-4f98-9a17-c7e4d1eca772" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.myPayload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="foreach-batchprocess-s9Flow" doc:id="baca249a-a032-4c94-ba89-e01ec9fbc936" >
+		<http:listener doc:name="Listener" doc:id="2bac2d99-a217-4dcf-b492-eac005f024a6" config-ref="HTTP_Listener_config" path="/db"/>
+		<foreach doc:name="For Each" doc:id="02bea082-7e7c-49d6-8ac8-d6d45869dd01" >
+			<ee:transform doc:name="Transform Message" doc:id="a05ba1e2-b4ec-4151-9d57-2f6d0e5e037c">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+[payload]]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			<db:insert doc:name="Insert" doc:id="b6953039-5d8c-46be-9713-5dd6b654893b" config-ref="Database_Config">
+				<db:sql ><![CDATA[insert into custDetails (Name,Phone_no,Email,Adhaar_id)
+values(:name,:mobile,:mail,:adhaar);]]></db:sql>
+				<db:input-parameters ><![CDATA[#[{
+	"name": payload.Name,
+	"mobile": payload.Phone_no,
+	"mail": payload.Email,
+	"adhaar": payload.Adhaar_id
+}]]]></db:input-parameters>
+			</db:insert>
+			<set-variable value="#[(vars.finalResult default []) + payload]" doc:name="finalResult" doc:id="9345b99d-ff00-4af9-b6fb-2d6abda8e065" variableName="finalResult"/>
+		</foreach>
+		<ee:transform doc:name="Transform Message" doc:id="4ff869ef-b40b-44ee-a9dc-0d9369089227">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.finalResult]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+	</flow>
+	<flow name="ceaterecord-in-salesforce-account" doc:id="dc9ade87-0644-4b55-b39c-c00501166879" >
+		<http:listener doc:name="Listener/records" doc:id="b88d57cf-58f9-42f1-840b-05e42405189e" config-ref="HTTP_Listener_config" path="/records" outputMimeType="application/json"/>
+		<logger level="INFO" doc:name="Logger" doc:id="8afe0799-fb4e-4f62-b10c-d5ad1a6f6dd8" message="#[payload]"/>
+		<ee:transform doc:name="Transform Message" doc:id="71920cbe-bcdc-4604-9880-385bde5b297d">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="78439510-d2e2-4862-bed2-b01f2bc7f1c4" message="#[payload]" />
+		<salesforce:create doc:name="Create" doc:id="5f948fbf-4b83-42a0-abd5-2facda2319b7" config-ref="Salesforce_Config" type="Account" readTimeoutUnit="MINUTES"/>
+		<set-variable value="#[(vars.finalResult default []) + payload]" doc:name="finalResult" doc:id="fed66fd3-c675-48ae-b537-4ba4f5cb8e1a" variableName="finalResult" />
+		<ee:transform doc:name="Transform Message" doc:id="22d94ec5-dfe6-4055-8123-196b7c4c5803" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.finalResult]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
